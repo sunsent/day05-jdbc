@@ -11,8 +11,10 @@ import java.sql.Statement;
 public class Hello {
     @Test
     public void insert() throws Exception{
-        //1. jdbc注册驱动
-        DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
+        //1. jdbc注册驱动, 不推荐.因为驱动实现类中 的静态代码以及调用过
+        //DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
+        //推荐的注册驱动方法
+        Class.forName("com.mysql.cj.jdbc.Driver");//加载类,驱动实现类中的静态块代码会执行DriverManager.registerDriver(new Driver())
         //2. 连接数据库
         /*
         ?useUnicode=true&characterEncoding=UTF-8，这个是解决中文乱码输入问题
@@ -33,8 +35,10 @@ public class Hello {
     }
     @Test
     public void query() throws Exception{
-        //1. jdbc注册驱动
-        DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());
+        //1. jdbc注册驱动,不推荐.因为驱动实现类中 的静态代码以及调用过
+        //DriverManager.registerDriver(new com.mysql.cj.jdbc.Driver());//驱动实现类中的静态块代码也会执行DriverManager.registerDriver(new Driver()),所以总共执行了两遍
+        //推荐的注册驱动方法
+        Class.forName("com.mysql.cj.jdbc.Driver");//加载类,驱动实现类中的静态块代码会执行DriverManager.registerDriver(new Driver())
         //2. 连接数据库
         /*
         ?useUnicode=true&characterEncoding=UTF-8，这个是解决中文乱码输入问题
