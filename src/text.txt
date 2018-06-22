@@ -1,0 +1,250 @@
+JDBC => Java Database connectivity  => 数据库连接
+
+
+JDBC 就是由 java提供的一套访问数据库的统一api.  使用这套api , 我们在 切换库时 十分方便. 并且切换库不会改变代码.学习成本也降低了.
+
+1.开发一个jdbc程序
+	1> 导包 ==> 导入厂商提供的数据库驱动. ==> mysql-connector-java-5.0.8-bin.jar
+	2> 注册驱动 
+	3> 连接数据库
+	4> 操作数据库(执行sql)
+	5> 关闭资源
+--------------------------------------------------------------------------------------------------------------------
+2.JDBC中的类
+	DriverManager 用于注册驱动,获得连接
+ 	Connection    代表连接 , 获得Statement对象
+	Statement     运送sql语句
+	ResultSet	  将运行结果从数据库运回java端
+---------------------------------------------------------------------------------------------------------------------
+3.DriverManager 细节问题
+	
+	1> 注册驱动的问题.
+		DriverManager.registDriver(new Driver()); ==> 该种注册方式,在将来的开发中 不要使用.
+	使用如下方式:
+		Class.forName("com.mysql.jdbc.Driver");
+	2>为什么?
+		在驱动类的代码中,我们可以看到有一个静态代码块。 静态代码块中已经做了注册驱动的事情。 所以我们只需要加载
+	驱动类，就相当于调用了 registDriver 方法。
+	3>使用 Class.forName有什么好处?
+		* 如果调用registDriver 方法, 那么相当于创建了两个Driver对象,浪费资源.
+		* 使用forname的方式. 因为驱动类的名称是以字符串的形式填写,那么我们把该名称放到配置文件中,每次从配置文件中读取.
+	那么切换驱动类就非常方便. 也就意味着切换数据库方便.
+	
+----------------------------------------------------------------------------------------------------------------------
+4.获得Connection的细节
+
+	DriverManager.getConnection("url","用户名","密码");
+	
+	url 填写格式:
+			外层协议:内部协议://主机名称[ip地址]:端口号/库名?参数键1=参数值&参数键2=参数值
+			
+			jdbc:mysql://localhost:3306/day15?useUnicode=true&characterEncoding=utf-8
+	
+	结合上面说的方便切换数据库.
+		我们在书写时,也可以把上面3个参数,写到配置文件中.
+	
+-----------------------------------------------------------------------------------------------------------------------	
+	
+5.Connection对象的细节问题
+	功能:1.代表数据库的链接
+		 2.可以根据该对象创建运送sql语句的Statement对象
+	方法:
+		****Statement createStatement()   创建statement对象
+		CallableStatement prepareCall(String sql)  调用数据库的存储过程(存储过程没学)
+		****PreparedStatement prepareStatement(String sql)   创建 PreparedStatement 对象(下午学)
+------------------------------------------------------------------------------------------------------------------------
+6.Statement 对象
+	该对象可以理解为一个 向数据库运送sql语句的 "小车";
+	方法:
+		void addBatch(String sql)  向车上添加语句. (用于批量执行sql语句); insert update delete
+		int[] executeBatch()   将车上的语句 运送给数据库执行.  返回值存放每个语句执行后影响的行数. 因为是多个语句,所以用数组装.
+		void clearBatch() 清除车上的语句.
+		----以上3个方法是批量执行sql相关的(下午最后一节课演示)----------------------
+		boolean execute(String sql)  执行一个sql语句. 如果该语句返回结果集 返回值为true(select). 如果该语句不返回结果集 返回false(insert update delete);
+		ResultSet executeQuery(String sql)  执行一个有结果集的查询. 会将结果集包装到resultset对象中.(select)
+		int executeUpdate(String sql)   执行一个没有结果集的语句. 会将语句影响的行数返回.(insert update delete)
+	
+	结论: 
+		执行查询语句时使用: executeQuery方法
+		执行增删改等语句时使用: executeUpdate方法
+-----------------------------------------------------------------------------------------------------------------
+7.ResultSet对象
+	功能: 当执行的语句是查询语句时, resultSet对象用于封装查询结果.
+	
+	方法:
+		boolean next() 该方法让结果集中的指针(游标)往下移动一行.并且判断改行是否有数据。 有返回true，没有返回false
+		String getString(int cloumnCount) 从当前指向的行中获得String 类型的数据.  根据列所在的索引位置取.
+		String getString(String columnName) 从当前指向的行中获得String 类型的数据. 根据列名取.
+	getXXX系列方法 有很多种, 没对针对的都是数据库中的不同类型.
+		数据库中的类型根getXXX方法如何对应?
+			数据库类型			对应的Get方法
+-------------------------------------------------
+			char/varchar         getString
+			int					 getInt
+			bigint				 getLong
+			float/double    	 getFloat/getDouble
+			datetime/timestamp   getDate
+			
+------------------------------------------------------------------------------------------------------------------			
+			
+8.ResultSet(了解内容)
+	结果集滚动;
+	滚动指的就是指针的位置不仅可以向下,还可以任意控制.
+		涉及的方法如下:
+			 boolean absolute(int row)  将指针移动到指定位置. 参数就是位置. 第一行的位置是1. 如果填写负数表示倒数.例如-1=>最后一行. 如果移动超出范围将会返回false.
+			 void afterLast()  将光标移动到此 ResultSet 对象的末尾，正好位于最后一行之后。 (该行没有数据)
+			 void beforeFirst()   将光标移动到此 ResultSet 对象的开头，正好位于第一行之前。(result的初始位置)
+			 boolean first()   将光标移动到第一行
+			 boolean last()    将光标移动到最后一行
+			 boolean next()   光标向下移动一行.
+			 boolean previous()  next反方向移动.向上移动一行.
+//--------------------------------------------------------			 
+	使用resultSet修改记录.
+		默认情况下resultSet 是不能反向修改数据库中的记录的.  需要在创建Statement对象时, 通过指定参数 创建一个可以产生 可以修改数据的resultSet对象的Statement
+		Statement createStatement(int resultSetType, int resultSetConcurrency)  
+		参数1  resultSetType - 结果集类型   
+					ResultSet.TYPE_FORWARD_ONLY、 不支持结果集滚动,只能向前.
+					ResultSet.TYPE_SCROLL_INSENSITIVE  支持滚动, 迟钝,不敏感的结果集.
+					ResultSet.TYPE_SCROLL_SENSITIVE    支持滚动, 敏感的结果集.
+ 		参数2  resultSetConcurrency  - 结果是否支持修改类型
+					ResultSet.CONCUR_READ_ONLY 	 不支持修改
+					ResultSet.CONCUR_UPDATABLE   支持修改
+ 
+	利用如下代码可以反向修改数据库中的数据:
+		String sql = "select * from emp";
+		Statement state = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY,ResultSet.CONCUR_UPDATABLE);
+		
+		ResultSet rs = state.executeQuery(sql);
+		
+		rs.next();
+		
+		rs.updateString("ename", "haha");
+		
+		rs.updateRow();
+	
+	结论: 不要使用resultSet 做修改的操作.  真的要做修改 我们要手写update语句来做. 
+		
+//-----------------------------------------------------------------------------------------------------------------
+9.释放资源
+	1> 从小到大释放. resultSet < Statement < Connection
+	2> 3个都需要释放.
+	3>释放时调用close方法即可. 如果其中一个对象的关闭 出现了异常. 也要保证其他的对象关闭方法被调用.
+	
+	resultSet.close();
+	Statement.close();
+	Connection.close();
+	以上代码是无法保证一定都能执行的.
+	
+	try{
+		resultSet.close();
+	}catch(Exception e){
+		
+	}finally{
+		try{
+			Statement.close();
+		}catch(Exception e){
+		}
+		finally{
+			try{
+				Connection.close();
+			}catch(Exception e){
+				
+			}
+		}
+	}
+
+-------------------------------------------------------------------------------------------
+10 SQL注入攻击
+
+	
+-- 早年登录逻辑,就是把用户在表单中输入的用户名和密码 带入如下sql语句. 如果查询出结果,那么 认为登录成功.
+
+SELECT * FROM USER WHERE NAME='' AND PASSWORD='xxx';
+
+-- sql注入: 请尝试以下 用户名和密码.
+
+/* 用户名:
+   密码: xxx
+*/
+-- 将用户名和密码带入sql语句, 如下:
+
+SELECT * FROM USER WHERE NAME='xxx' OR 1=1 -- ' and password='xxx';
+
+-- 发现sql语句失去了判断效果,条件部分成为了恒等式.
+-- 导致网站可以被非法登录, 以上问题就是sql注入的问题.
+//-------------------------------------------------------------------------------------------
+思考会出现什么问题?
+	将用户名密码带入sql语句,发现sql语句变成了如下形式:
+		SELECT * FROM t_student WHERE NAME='abcd'OR 1=1;-- ' AND PASSWORD='1234';
+	该sql语句就是一个 恒等条件.所以 一定会查询出记录. 造成匿名登陆.有安全隐患
+	
+如上问题,是如何解决呢?
+	1>解决办法:在运送sql时,我们使用的是Statement对象. 如果换成prepareStatement对象,那么就不会出现该问题.
+	2>sql语句不要再直接拼写.而要采用预编译的方式来做.
+完成如上两步.即可解决问题.
+	*为什么使用PrepareStatement对象能解决问题?
+		sql的执行需要编译. 注入问题之所以出现,是因为用户填写 sql语句 参与了编译.  使用PrepareStatement对象
+	在执行sql语句时,会分为两步. 第一步将sql语句 "运送" 到mysql上编译.  再回到 java端 拿到参数 运送到mysql端.
+	用户填写的 sql语句,就不会参与编译. 只会当做参数来看. 避免了sql注入问题;
+		PrepareStatement 在执行 母句相同, 参数不同的 批量执行时. 因为只会编译一次.节省了大量编译时间.效率会高.
+		
+-----------------------------------------------
+		使用PrepareStatement对象 与 Statement对象的区别
+		
+		1.Statement 可以先行创建, 然后将sql语句写入.
+		  PrepareStatement 在创建时一定要传入 sql语句, 因为它要先运送到数据库执行预编译
+		  
+			api:
+					PreparedStatement pst = conn.prepareStatement(sql);
+		  
+		2. PrepareStatement 在执行之前 先要设置 语句中的参数. 
+			
+			api: 
+				pst.setString(1, name);  -- set方法的调用要看 参数的类型.
+				
+				char/varchar    setString
+				int 			setInt
+				double 			setDouble
+				datatime/timestamp 	setDate
+		3. Statement对象在真正执行时 传入sql语句
+		   PrepareStatement 在执行之前已经 设置好了 sql语句 以及对应参数. 执行方法不需要参数
+			
+			api:
+				ResultSet rs = pst.executeQuery();
+-----------------------------------------------------------------------------------------------
+
+11.存取大文本(将来有可能遇到)
+	create table mytext(
+		id int primary key AUTO_INCREMENT,
+		text text
+	)
+-----------------------------------------------------------------------------------------------
+12.存储2进制(多媒体文件)
+	create table myblob(
+		id int primary key AUTO_INCREMENT,
+		file blob
+	)
+------------------------------------------------------------------------------------------------
+13.批量执行sql (Statement/PrepareStatement)
+	
+
+	
+
+		
+		
+		
+		
+		
+		
+	
+ 
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
